@@ -8,12 +8,14 @@ from geometry_msgs.msg import Twist, Pose, Quaternion
 from tf_transformations import quaternion_from_euler
 import math
 
+FREQUENCY = 150
+
 class OdometryCalculator(Node):
     def __init__(self):
         super().__init__('odometry_calculator')
         
         # Параметры
-        self.declare_parameter('publish_rate', 10.0)  # Частота в Гц (по умолчанию 10)
+        self.declare_parameter('publish_rate', FREQUENCY)  # Частота в Гц (по умолчанию 10)
         self.publish_rate = self.get_parameter('publish_rate').value
         self.get_logger().info(f'Publish rate set to {self.publish_rate} Hz')
         
@@ -51,7 +53,7 @@ class OdometryCalculator(Node):
 
     def publish_odometry(self):
         current_time = self.get_clock().now()
-        dt = (current_time - self.last_time).nanoseconds / 1e9  # В секундах
+        dt = (current_time - self.last_time).seconds # В секундах
         self.last_time = current_time
         
         # Вычисление изменения позиции
