@@ -1,3 +1,14 @@
+# Original code:
+# Copyright (c) 2010-2012, Willow Garage, Inc.
+# Copyright (c) 2019, Eurotec, Netherlands
+#
+# Modified by Alexander Grachev and Alice Zenina RTU MIREA (Russia), 2025.
+# Changes:
+# - Modified point cloud and scanning parameters
+# - Updated remappings for Livox compatibility
+# - Altered transformation and scanning parameters
+
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration

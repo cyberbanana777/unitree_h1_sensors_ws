@@ -1,3 +1,10 @@
+# Original code from Livox ROS Driver2 (MIT License)
+# Copyright (c) 2022 Livox. All rights reserved.
+#
+# Modified by Alexander Grachev and Alice Zenina RTU MIREA (Russia), 2025.
+# Changes: changed fequerency and type of message.
+
+
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
