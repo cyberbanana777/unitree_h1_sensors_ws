@@ -4,8 +4,8 @@
   <name>cmd_to_odom_package</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="sashagrachev@gmail.com">banana-killer</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="sashagrachev2005@gmail.com">banana-killer</maintainer>
+  <license>MIT</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
