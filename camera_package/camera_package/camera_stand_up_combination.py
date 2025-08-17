@@ -21,36 +21,6 @@ pipeline.start(config)
 # Создаем цветовую карту для глубины
 colorizer = rs.colorizer()
 
-def generate_combined_frames():
-    try:
-        while True:
-            # Получаем кадры
-            frames = pipeline.wait_for_frames()
-            color_frame = frames.get_color_frame()
-            depth_frame = frames.get_depth_frame()
-            if not color_frame or not depth_frame:
-                continue
-            
-            # Конвертируем цветной кадр
-            color_image = np.asanyarray(color_frame.get_data())
-            
-            # Конвертируем карту глубины в цветное изображение
-            depth_color_frame = colorizer.colorize(depth_frame)
-            depth_image = np.asanyarray(depth_color_frame.get_data())
-            
-            # Объединяем изображения горизонтально
-            combined_image = np.hstack((color_image, depth_image))
-            
-            # Кодируем в JPEG
-            ret, buffer = cv2.imencode('.jpg', combined_image)
-            frame = buffer.tobytes()
-            
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-    finally:
-        pipeline.stop()
-
 def generate_color_frames():
     try:
         while True:
@@ -129,11 +99,6 @@ def index():
                         <img src="/depth_feed" width="640" height="480">
                     </div>
                 </div>
-                
-                <div class="stream-container">
-                    <h2>Combined View</h2>
-                    <img src="/combined_feed" width="1280" height="480">
-                </div>
             </div>
         </body>
     </html>
@@ -152,14 +117,6 @@ def depth_feed():
         generate_depth_frames(),
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
-
-@app.route('/combined_feed')
-def combined_feed():
-    return Response(
-        generate_combined_frames(),
-        mimetype='multipart/x-mixed-replace; boundary=frame'
-    )
-
 
 def main():
     app.run(host='192.168.123.162', port=5010, threaded=True)
