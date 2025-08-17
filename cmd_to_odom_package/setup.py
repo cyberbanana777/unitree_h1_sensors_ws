@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='banana-killer',
     maintainer_email='sashagrachev2005@gmail.com',
-    description='TODO: Package description',
+    description='ROS 2-узел для расчета одометрии на основе команд движения (cmd_vel).',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

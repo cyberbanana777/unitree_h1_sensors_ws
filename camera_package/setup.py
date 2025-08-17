@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='banana-killer',
     maintainer_email='sashagrachev2005@gmail.com',
-    description='TODO: Package description',
+    description='Flask server for streaming video from Intel RealSense camera.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
