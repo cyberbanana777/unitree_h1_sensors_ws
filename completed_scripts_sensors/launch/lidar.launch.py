@@ -1,46 +1,48 @@
-# Copyright (c) 2025 Alice Zenina and Alexander Grachev RTU MIREA (Russia)
-# SPDX-License-Identifier: MIT
-# Details in the LICENSE file in the root of the package.
-
-import os
 from launch import LaunchDescription
+from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from ament_index_python.packages import get_package_share_directory
-from launch_ros.actions import Node
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
 
-   # Получаем пути к launch-файлам других пакетов
-    pkg1_launch_dir = os.path.join(get_package_share_directory('livox_ros_driver2'), 'launch')
-    # pkg2_launch_dir = os.path.join(get_package_share_directory('completed_scripts_teleoperation'), 'launch')
-
-    # Включаем первый launch-файл
-    launch_file1 = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg1_launch_dir, 'msg_MID360_launch.py'))
+    # Step 0. Init LiDAR.
+    package_name = "livox_ros_driver2"
+    launch_file = "msg_MID360_launch.py"
+    path_to_launch = PathJoinSubstitution([
+        FindPackageShare(package_name),
+        'launch',
+        launch_file
+    ])
+    livox_ros_driver2_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([path_to_launch]),
     )
 
-    # Включаем второй launch-файл
-    # launch_file2 = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(os.path.join(pkg2_launch_dir, 'teleoperation_launch.py'))
-    # )
-
-    node =  Node(
-        package="low_level_control",
-        executable="low_level_control_without_hands_node",
+    # Step 1. First converter. 
+    # Livox to pointcloud2.
+    livox_to_pointcloud2_node = Node(
+            package="livox_to_pointcloud2",
+            executable="livox_to_pointcloud2_node"
     )
-
-    node_1 = Node(
-        package="cmd_to_high_level_control_package",
-        executable="cmd_to_high_level_control_node",
-    ),
     
-    return LaunchDescription(
-        [
-            launch_file1,
-            # launch_file2,
-            node,
-            node_1,
-        ]
+    # Step 2. Second converter. 
+    # Pointcloud2 to laserscan.
+    package_name = "pointcloud_to_laserscan"
+    launch_file = "sample_pointcloud_to_laserscan_launch.py"
+    path_to_launch = PathJoinSubstitution([
+        FindPackageShare(package_name),
+        'launch',
+        launch_file
+    ])
+    pointcloud_to_laserscan_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([path_to_launch]),
     )
+
+    return LaunchDescription([
+        livox_ros_driver2_launch,
+        livox_to_pointcloud2_node,
+        pointcloud_to_laserscan_launch,
+    ])
+

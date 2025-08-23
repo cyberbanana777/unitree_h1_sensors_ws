@@ -2,10 +2,18 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>completed_scripts_sensors</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>1.0.0</version>
+  <description>
+    This package contains launch-files that launch the various sensor sets
+    of the Unitree H1 robot.
+  <description>
   <maintainer email="sashagrachev2005@gmail.com">banana-killer</maintainer>
   <license>MIT</license>
+
+  <depend>ros2launch</depend>
+  <depend>livox_ros_driver2</depend>
+  <depend>livox_to_pointcloud2</depend>
+  <depend>pointcloud_to_laserscan</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
