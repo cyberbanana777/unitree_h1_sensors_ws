@@ -6,10 +6,10 @@
   <description>
     This package contains launch-files that launch the various sensor sets
     of the Unitree H1 robot.
-  <description>
+  </description>
   <maintainer email="sashagrachev2005@gmail.com">banana-killer</maintainer>
   <license>MIT</license>
-
+  
   <depend>ros2launch</depend>
   <depend>livox_ros_driver2</depend>
   <depend>livox_to_pointcloud2</depend>
