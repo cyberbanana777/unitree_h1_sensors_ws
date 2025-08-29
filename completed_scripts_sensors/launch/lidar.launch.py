@@ -13,7 +13,7 @@ def generate_launch_description():
     launch_file = "msg_MID360_launch.py"
     path_to_launch = PathJoinSubstitution([
         FindPackageShare(package_name),
-        'launch',
+        'launch_ROS2',
         launch_file
     ])
     livox_ros_driver2_launch = IncludeLaunchDescription(
