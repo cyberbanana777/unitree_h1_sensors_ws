@@ -3,7 +3,7 @@
 <package format="3">
   <name>imu_converter</name>
   <version>1.0.0</version>
-  <description>The package for convertation IMU data from custom msg from Unitree to standart ros2 imu-msgs (sensors_msgs/msg/IMU) </description>
+  <description>The package for convertation IMU data from a custom msg from Unitree to a standard ros2 imu-msgs (sensors_msgs/msg/IMU) </description>
   <maintainer email="sashagrachev2005@gmail.com">banana-killer</maintainer>
   <license>MIT</license>
 

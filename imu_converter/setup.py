@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='banana-killer',
     maintainer_email='sashagrachev2005@gmail.com',
-    description='The package for convertation IMU data from custom msg from Unitree to standart ros2 imu-msgs (sensors_msgs/msg/IMU) ',
+    description='The package for convertation IMU data from a custom msg from Unitree to a standard ros2 imu-msgs (sensors_msgs/msg/IMU) ',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

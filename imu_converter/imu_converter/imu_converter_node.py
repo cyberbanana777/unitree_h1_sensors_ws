@@ -29,7 +29,7 @@ class IMUConverterNode(Node):
         
         # Parametrs
         self.declare_parameter('input_topic', '/lowstate')
-        self.declare_parameter('output_topic', '/sensors/imu/bare_data')
+        self.declare_parameter('output_topic', '/sensors/imu/unitree_h1')
         self.declare_parameter('frame_id', 'imu_link')
         
         input_topic = self.get_parameter('input_topic').value
