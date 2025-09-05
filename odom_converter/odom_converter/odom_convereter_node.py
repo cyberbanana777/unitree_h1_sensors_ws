@@ -19,6 +19,7 @@ data from OdomModeState with orientation and angular velocity from LowState.
 Requires simultaneous availability of both data sources for proper operation.
 '''
 
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -28,6 +29,8 @@ from geometry_msgs.msg import (
 from std_msgs.msg import Header
 from unitree_go.msg import SportModeState, LowState
 
+from high_level_control import OdomClient
+
 
 class OdometryConverter(Node):
     """
@@ -35,6 +38,15 @@ class OdometryConverter(Node):
     """
     def __init__(self):
         super().__init__('odometry_converter')
+        
+        # Initialize channel
+        ChannelFactoryInitialize()
+        
+        # Initialize and start OdomClient
+        self.odom_client = OdomClient()
+        self.odom_client.Init()
+        self.odom_client.SetTimeout(1.0)
+        self.odom_client.EnableOdom()
         
         # Subscriptions to both message types
         self.sport_subscription = self.create_subscription(
@@ -147,6 +159,7 @@ def main(args=None):
     except Exception as e:
         node.get_logger().error(f'Node stopped due to error: {str(e)}')
     finally:
+        node.odom_client.DisableOdom()
         node.destroy_node()
         rclpy.shutdown()
 
