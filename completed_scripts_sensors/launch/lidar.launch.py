@@ -13,7 +13,7 @@ def generate_launch_description():
     launch_file = "msg_MID360_launch.py"
     path_to_launch = PathJoinSubstitution([
         FindPackageShare(package_name),
-        'launch',
+        'launch_ROS2',
         launch_file
     ])
     livox_ros_driver2_launch = IncludeLaunchDescription(
@@ -24,7 +24,12 @@ def generate_launch_description():
     # Livox to pointcloud2.
     livox_to_pointcloud2_node = Node(
             package="livox_to_pointcloud2",
-            executable="livox_to_pointcloud2_node"
+            executable="livox_to_pointcloud2_node",
+            namespace='sensors',
+            remappings=[
+                ('livox/point_cloud2', 'lidar/livox/point_cloud2'),
+                ("livox/lidar", 'lidar/livox/custom_msg')
+            ]
     )
     
     # Step 2. Second converter. 
@@ -40,9 +45,18 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([path_to_launch]),
     )
 
+    # Step 3. IMU extractor from /lowstate 
+    # Livox to pointcloud2.
+    imu_converter_node = Node(
+            package="imu_converter",
+            executable="imu_converter_node",
+            namespace='sensors',
+    )
+
     return LaunchDescription([
         livox_ros_driver2_launch,
         livox_to_pointcloud2_node,
         pointcloud_to_laserscan_launch,
+        imu_converter_node,
     ])
 

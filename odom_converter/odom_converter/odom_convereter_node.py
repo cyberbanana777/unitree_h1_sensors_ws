@@ -28,7 +28,6 @@ from geometry_msgs.msg import (
 )
 from std_msgs.msg import Header
 from unitree_go.msg import SportModeState, LowState
-
 from high_level_control import OdomClient
 
 
@@ -40,7 +39,7 @@ class OdometryConverter(Node):
         super().__init__('odometry_converter')
         
         # Initialize channel
-        ChannelFactoryInitialize()
+        ChannelFactoryInitialize(0)
         
         # Initialize and start OdomClient
         self.odom_client = OdomClient()

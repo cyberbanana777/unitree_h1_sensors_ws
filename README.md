@@ -27,7 +27,7 @@ my_pwd=$(pwd)
 -   [unitree_sdk2py](https://github.com/unitreerobotics/unitree_sdk2_python/tree/master) - библиотека от производителя с инструкцией по установке. В оригинале она работает не очень хорошо, поэтому мы переработали её и сделали установку проще. Можно установить оригинал (ссылка выше) или наш вариант, который устанавливается вместе с [unitree_h1_control_ws](https://github.com/cyberbanana777/unitree_h1_control_ws), даже если вам не нужен функционал этого репозитория.
 -   [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2). Если вы уже установили данную зависимость при установке другого репозитория, повторно выполнять не нужно. По ссылке выполняете всё, что написано до `Connect to Unitree robot`. После всех действий нужно выполнить команду:
 ```bash
-echo "source ~/unitree_ros2/cyclonedds_ws/install/setup.bash" >> ~/.bashrc
+echo "source ~/unitree_ros2/cyclonedds_ws/install/local_setup.bash" >> ~/.bashrc
 source ~/.bashrc 
 ```
 3. **Установить pip-зависимости:**
@@ -41,12 +41,12 @@ chmod +x install_dependensies.bash
 ```bash
 cd $my_pwd/..
 colcon build # --symlink-install позволяет не colcon'ить область после изменений кода пакетов, что бы изменения применились.
-source install/setup.bash  # Или setup.zsh - в зависимости от вашего интерпретатора командной строки
+source install/local_setup.bash  # Или local_setup.zsh - в зависимости от вашего интерпретатора командной строки
 ```
 5. Добавить `source` в `~/.bashrc`: 
-Зачем? - Чтобы не делать при каждом перезапуске терминала `source install/setup.bash`. Выполните команды ниже и это изменит код `~/.bashrc` - скрипта, который выполняется при запуске нового терминала. Для каждой ws делается отдельно. 
+Зачем? - Чтобы не делать при каждом перезапуске терминала `source install/local_setup.bash`. Выполните команды ниже и это изменит код `~/.bashrc` - скрипта, который выполняется при запуске нового терминала. Для каждой ws делается отдельно. 
 ```bash
-line_to_add="source \"$(pwd)/install/setup.bash\""
+line_to_add="source \"$(pwd)/install/local_setup.bash\""
 grep -qxF "$line_to_add" ~/.bashrc || echo "$line_to_add" >> ~/.bashrc
 ```
 6.  **Запустить пример / основной функционал:**
