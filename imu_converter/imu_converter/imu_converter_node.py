@@ -71,10 +71,10 @@ class IMUConverterNode(Node):
         imu_msg.header.frame_id = self.frame_id
         
         # quaternion of orientetion
-        imu_msg.orientation.x = float(imu_state.quaternion[0])
-        imu_msg.orientation.y = float(imu_state.quaternion[1])
-        imu_msg.orientation.z = float(imu_state.quaternion[2])
-        imu_msg.orientation.w = float(imu_state.quaternion[3])
+        imu_msg.orientation.x = float(imu_state.quaternion[1])
+        imu_msg.orientation.y = float(imu_state.quaternion[2])
+        imu_msg.orientation.z = float(imu_state.quaternion[3])
+        imu_msg.orientation.w = float(imu_state.quaternion[0])
         
         # orientation_covariance (unknown)
         imu_msg.orientation_covariance[0] = -1.0
