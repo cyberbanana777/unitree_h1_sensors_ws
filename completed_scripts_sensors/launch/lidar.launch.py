@@ -26,10 +26,10 @@ def generate_launch_description():
             package="livox_to_pointcloud2",
             executable="livox_to_pointcloud2_node",
             namespace='sensors',
-            remappings=[
-                ('livox/point_cloud2', 'lidar/livox/point_cloud2'),
-                ("livox/lidar", 'lidar/livox/custom_msg')
-            ]
+            # remappings=[
+            #     ('livox/point_cloud2', 'lidar/livox/point_cloud2'),
+            #     ("livox/lidar", 'lidar/livox/custom_msg')
+            # ]
     )
     
     # Step 2. Second converter. 
@@ -53,10 +53,19 @@ def generate_launch_description():
             namespace='sensors',
     )
 
+    # Step 4. Connect frame to mid360_link (part of robot description)
+    transform_node =Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_transform_publisher',
+        arguments=['0', '0', '0', '0', '-0.28', '0', '0', 'mid360_link', 'livox_frame'],
+    )
+
     return LaunchDescription([
         livox_ros_driver2_launch,
         livox_to_pointcloud2_node,
         pointcloud_to_laserscan_launch,
         imu_converter_node,
+        transform_node
     ])
 
