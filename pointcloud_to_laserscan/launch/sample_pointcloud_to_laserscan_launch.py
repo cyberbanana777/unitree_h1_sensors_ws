@@ -13,6 +13,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -21,12 +22,20 @@ def generate_launch_description():
             name='scanner', default_value='scanner',
             description='Namespace for sample topics'
         ),
+        DeclareLaunchArgument(
+            name='transform_tolerance', default_value='0.1',
+            description=(
+                'Допуск по времени при поиске TF, с. '
+                'Раньше было 5.01 (маскировало проблемы с TF)'
+            )
+        ),
         # Node(
-        #     package='pointcloud_to_laserscan', 
+        #     package='pointcloud_to_laserscan',
         #     executable='dummy_pointcloud_publisher',
         #     namespace='sensors',
         #     remappings=[('cloud', 'lidar/livox/point_cloud2')],
-        #     parameters=[{'cloud_frame_id': 'livox_frame', 'cloud_extent': 2.0, 'cloud_size': 500}],
+        #     parameters=[{'cloud_frame_id': 'livox_frame', 'cloud_extent': 2.0,
+        #                  'cloud_size': 500}],
         #     name='cloud_publisher_node'
         # ),
         # Node(
@@ -36,7 +45,7 @@ def generate_launch_description():
         #     arguments=['0', '0', '0', '0', '0', '0', '1', 'mid360_link', 'livox_frame']
         # ),
         Node(
-            package='pointcloud_to_laserscan', 
+            package='pointcloud_to_laserscan',
             executable='pointcloud_to_laserscan_node',
             namespace='sensors',
             remappings=[
@@ -45,12 +54,14 @@ def generate_launch_description():
             ],
             parameters=[{
                 'target_frame': 'mid360_link',
-                'transform_tolerance': 5.01,
+                'transform_tolerance': ParameterValue(
+                    LaunchConfiguration('transform_tolerance'), value_type=float),
                 'min_height': -1.5,
                 'max_height': 0.0,
                 'angle_min': -3.1416,  # -M_PI
                 'angle_max': 3.1416,  # M_PI
-                'angle_increment': 0.007,  # M_PI/360.0
+                # ≈ M_PI/360 (0.5°, 720 лучей); раньше было 0.007 (≈0.4°, 898 лучей)
+                'angle_increment': 0.00873,
                 'scan_time': 0.2,
                 'range_min': 0.3,
                 'range_max': 70.0,

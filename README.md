@@ -1,208 +1,81 @@
->❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗ 
-Данный репозиторий находится в стадии разработки. Документация и софт не являются законченными. Просим Вас это учитывать при работе с этим репозиторием.
-❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗
+# unitree_h1_sensors_ws
 
+ROS 2 пакеты для работы с сенсорами робота Unitree H1: лидар Livox MID360, IMU и одометрия из
+состояния робота, камера Intel RealSense D435i.
 
-# unitree_h1_teleoperation_ws
-В данном репозитории лежат ROS2-пакеты, необходимые для телеуправления роботом Unitree H1 с помощью Устройства Копирующего Типа (УКТ) от НПО "Андроидная техника".
-Заметим, что данный репозиторий запускает только ноды, нужные для приёма значений от УКТ и их конвертации. Для запуска всей системы необходимо так же установить [meta_launch_ws](https://github.com/cyberbanana777/unitree_h1_meta_launch_ws?tab=readme-ov-file#-какие-репозитории-установить) и другие репозитории (см. [meta_launch_ws / какие репозитории установить](https://github.com/cyberbanana777/unitree_h1_meta_launch_ws?tab=readme-ov-file#-какие-репозитории-установить))
+> Репозиторий в разработке. Состояние пакетов — в [docs/PACKAGES.md](docs/PACKAGES.md),
+> проверка на железе — в [docs/HARDWARE_TESTING.md](docs/HARDWARE_TESTING.md),
+> журнал рефакторинга — в [TODO.md](TODO.md), изменения по пакетам — в `CHANGELOG.md` внутри каждого пакета.
 
-## 📦 Содержание Репозитория
-* **`completed_scripts_teleoperation/`**: Содержит python launch-файлы, которые запускают конфигурации нод из данного репозитория для задач соответствующих названиям launch-файлов.
-* **`converter_from_ukt_into_rad_package/`**: Содержит ноду, которая конвертирует значения, полученные с УКТ, в радианы.
-*   **`converter_from_ukt_to_h1_package/`**: Содержит ноду, которая конвертирует значения, полученные с УКТ, в формат для управления Unitree H1 (для low_level_control_node).
-*   **`extractor_package/`**: Содержит ноду, которая  извлекает текущую угловую координату выбранного сустава с Unitree H1 и с УКТ одновременно и републикует полученные значения в отдельные ROS2-топики для построения графиков и т. п.
-*   **`repeater_package/`**: Содержит ноду, которая ретранслирует данные с UDP-сокета в ROS2-топик 
-*   **`docs/`**: Дополнительная документация.
-*   **`install_dependensies.bash`** - Bash-скрипт,  при запуске которого устанавливаются все необходимые python-зависимости через pip.
-*   **`README.md`**: Этот файл.
-*   **`save.bash`**: Скрипт для быстрой выгрузки на github
+## Пакеты
 
-## 🚀 Быстрый Старт
-Пошаговая инструкция для **быстрого** запуска основной функциональности. Предполагаем, что ROS2 (Foxy) уже установлен. 
+| Пакет | Назначение |
+|---|---|
+| `livox_ros_driver2` | Драйвер Livox (upstream + наши правки, см. `MODIFICATIONS.md`) |
+| `livox_to_pointcloud2` | `livox_ros_driver2/CustomMsg` → `sensor_msgs/PointCloud2` |
+| `pointcloud_to_laserscan` | `PointCloud2` → `LaserScan` (вендорный пакет, см. его README) |
+| `imu_converter` | `unitree_go/LowState` → `sensor_msgs/Imu` |
+| `odom_converter` | `SportModeState` + `LowState` → `nav_msgs/Odometry` |
+| `realsense_d435i_configs` | Пресеты и launch для камеры RealSense D435i (`realsense2_camera`), MIT |
+| `completed_scripts_sensors` | Launch-файлы, запускающие наборы сенсоров |
 
-1.  **Клонировать репозиторий** в `src` вашего workspace:
+Скрипты проверки (`check_imu.py`, `check_odom.py`, `check_pointcloud.py`, `check_lidar_floor.py`), сбор окружения (`collect_env.sh`) и разбор bag без ROS (`tools/bag_analysis/`, результаты — [docs/BAG_ANALYSIS.md](docs/BAG_ANALYSIS.md)) лежат в `tools/`, порядок работы — в [docs/HARDWARE_TESTING.md](docs/HARDWARE_TESTING.md).
+
+## Установка
+
+1. ROS 2 Foxy или Humble.
+2. [Livox-SDK2](https://github.com/Livox-SDK/Livox-SDK2) — собрать и установить (нужна `liblivox_lidar_sdk_shared.so`).
+3. `unitree_ros2` и `unitree_sdk2py` (для `imu_converter` и `odom_converter`);
+   `high_level_control` с `OdomClient` из workspace `unitree_h1_control_ws` (для `odom_converter`).
+4. Сборка:
+
 ```bash
-mkdir -p unitree_h1_teleoperation_ws/src
-cd unitree_h1_teleoperation_ws/src
-git clone https://github.com/cyberbanana777/unitree_h1_teleoperation_ws.git .
-my_pwd=$(pwd)
+cd <workspace>
+./src/install_dependencies.bash          # rosdep + проверка Livox-SDK2, unitree_sdk2py, unitree_go (--dry-run: только показать)
+colcon build   # Humble определяется по ROS_DISTRO; на Foxy тоже просто colcon build
+source install/setup.bash
 ```
-2. **Установить проприетарные зависимости** (по ссылкам инструкции по установке от производителя): 
--   [unitree_sdk2py](https://github.com/unitreerobotics/unitree_sdk2_python/tree/master) - библиотека от производителя с инструкцией по установке. В оригинале она работает не очень хорошо, поэтому мы переработали её и сделали установку проще. Можно установить оригинал (ссылка выше) или наш вариант, который устанавливается вместе с [unitree_h1_control_ws](https://github.com/cyberbanana777/unitree_h1_control_ws), даже если вам не нужен функционал этого репозитория.
--   [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2). Если вы уже установили данную зависимость при установке другого репозитория, повторно выполнять не нужно. По ссылке выполняете всё, что написано до `Connect to Unitree robot`. После всех действий нужно выполнить команду:
+
+## Запуск
+
 ```bash
-echo "source ~/unitree_ros2/cyclonedds_ws/install/local_setup.bash" >> ~/.bashrc
-source ~/.bashrc 
+ros2 launch completed_scripts_sensors lidar.launch.py   # лидар + IMU + TF
+ros2 run odom_converter odom_converter_node             # одометрия робота
 ```
-3. **Установить pip-зависимости:**
-Для простоты мы сделали bash-скрипт, который автоматизирует этот процесс. Его необходимо запустить. Для этого выполним команды:
-```bash
-cd $my_pwd
-chmod +x install_dependensies.bash
-./install_dependensies.bash
+
+Топики лидара (namespace `sensors`):
+
 ```
-4.  **Собрать workspace:**
-```bash
-cd $my_pwd/..
-colcon build # --symlink-install позволяет не colcon'ить область после изменений кода пакетов, что бы изменения применились.
-source install/local_setup.bash  # Или local_setup.zsh - в зависимости от вашего интерпретатора командной строки
+/sensors/lidar/livox/custom_msg    livox_ros_driver2/CustomMsg   (драйвер)
+/sensors/lidar/livox/point_cloud2  sensor_msgs/PointCloud2       (livox_to_pointcloud2)
+/sensors/lidar/livox/scan          sensor_msgs/LaserScan         (pointcloud_to_laserscan)
+/sensors/imu/livox                 sensor_msgs/Imu               (IMU самого лидара)
+/sensors/imu/unitree_h1            sensor_msgs/Imu               (imu_converter, из /lowstate)
 ```
-5. Добавить `source` в `~/.bashrc`: 
-Зачем? - Чтобы не делать при каждом перезапуске терминала `source install/local_setup.bash`. Выполните команды ниже и это изменит код `~/.bashrc` - скрипта, который выполняется при запуске нового терминала. Для каждой ws делается отдельно. 
-```bash
-line_to_add="source \"$(pwd)/install/local_setup.bash\""
-grep -qxF "$line_to_add" ~/.bashrc || echo "$line_to_add" >> ~/.bashrc
-```
-6.  **Запустить пример / основной функционал:**
-launch-файл, который запускает только ноды из этого репозитория (подробнее см. 🧪 Использование)
-```bash
-ros2 launch completed_scripts_teleoperation teleoperation_launch.py
-```
-или
-```bash
-ros2 launch completed_scripts_teleoperation teleoperation_with_metrics_launch.py
-```
-Launch-файлы, которые запускают всю систему целиком смотри в [unitree_h1_meta_launch_ws](https://github.com/cyberbanana777/unitree_h1_meta_launch_ws?tab=readme-ov-file#%D0%B7%D0%B0%D0%BF%D1%83%D1%81%D0%BA-launch-%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2)
 
-## ⚙️ Предварительные Требования
+Положение `livox_frame` относительно `mid360_link` настраивается аргументами `lidar_tf_x|y|z|yaw|pitch|roll`
+(по умолчанию 0: драйвер уже применяет `extrinsic_parameter` из `MID360_config.json`).
 
-Что нужно для шагов "Быстрого Старта":
-*   **Поддерживаемые версии ROS2:** Foxy
-*   **Поддерживаемые платформы:** Ubuntu 20.04
-*   **Ключевые ROS2 пакеты:** `rclpy`, `std_msgs`, `geometry_msgs`, `unitree_go`
+## TODO
 
-## 🧪 Использование
+Потенциальные улучшения (что ещё стоит сделать). Журнал уже сделанного рефакторинга ведётся
+отдельно в [TODO.md](TODO.md).
 
-Как пользоваться пакетами после установки и сборки.
+- Проверить камеру на роботе: применяется ли профиль, имена фреймов (`camera_name`), загрузка CPU на `rgb_usb3`.
+- IMU камеры D435i (гироскоп и акселерометр) сейчас выключен во всех пресетах; при необходимости добавить пресет
+  (`enable_gyro`, `enable_accel`, `unite_imu_method`), см. `realsense_d435i_configs/README.md`.
+- `livox_to_pointcloud2`: параметр, отбрасывающий точки нулевой дальности (в записях около 19 % точек без возврата).
+- `odom_converter`: параметр, пропускающий `OdomClient` (запуск в симуляции; по умолчанию поведение на роботе не меняется).
+- Измерить реальные ковариации IMU и одометрии (запись статики в `ros2 bag`) и задать их параметрами.
+- Взять штамп времени IMU и одометрии из `LowState.tick` вместо времени приёма на хосте.
+- Определить, в какой системе координат приходит `SportModeState.velocity`, и при необходимости пересчитывать в `pelvis`.
+- Перейти на `SensorDataQoS` для облака точек, если RViz или SLAM начнут отставать.
+- Добавить в облако точек время каждой точки (`offset_time`) для компенсации движения (deskew).
+- Описать в README единую схему фреймов (`odom` → `pelvis` → `mid360_link` → `livox_frame`) и кто какой TF публикует.
+- Хранить `livox_ros_driver2` как патч поверх upstream вместо полной копии (убрать ROS1-часть и `3rdparty`).
+- Собирать и тестировать все пакеты в CI (Docker на Foxy и Humble), добавить `launch_testing` для launch-файлов.
 
-### **Запуск узлов:**
-#### converter_angles_ukt_into_rad_node
-```bash 
-ros2 run converter_angles_ukt_into_rad_package converter_angles_ukt_into_rad_node
-```
-#### converter_from_ukt_to_h1_package
-```bash
-ros2 run converter_from_ukt_to_h1_package converter_from_ukt_to_h1_node
-```
-#### extractor_package
-##### Без параметра
-```bash
-ros2 run extractor_package extractor_node
-```
-##### С параметром
-Параметр - это номер сустава H1, значение положения которого будет получено с робота и с соответсвующего ему сустава УКТ.
-Значение по умолчанию 16 - left_shoulder_roll
-```bash
-ros2 run extractor_package extractor_node --ros-args -p H1_joint_num:=15 # С параметром значения типа int
-```
-Соответствие представлено ниже.
-![unitree_h1_joints](docs/unitree_h1_joints.jpg)
-#### repeater_package
-```bash
-ros2 run repeater_package repeater_node 
-```
-### **Запуск Launch файлов:**
-#### Запуск основного функционала
-```bash
-ros2 launch completed_scripts_teleoperation teleoperation_launch.py
-```
-**Запускаемые ноды** (в формате `пакет` -> `зависимость`):
-- `repeater_package` -> `repeater_node`
-- `converter_from_ukt_to_h1_package` -> `converter_from_ukt_to_h1_node`
-#### Запуск основного функционала с публикацие угловых положений выбранных суставов каждого в отдельный топик.
-Для выбора суставов, положения которых отслеживаются, в запускаемом launch-файле нужно изменить список `JOINTS_TO_CHECK`. Используется индексация joints как в Unitree H1
-```bash
-ros2 launch completed_scripts_teleoperation teleoperation_with_metrics_launch.py
-```
-**Запускаемые ноды** (в формате `пакет` -> `зависимость`):
-- `repeater_package` -> `repeater_node`
-- `converter_from_ukt_to_h1_package` -> `converter_from_ukt_to_h1_node`
-- `converter_angles_ukt_into_rad_package` -> `converter_angles_ukt_into_rad_node`
-- `extractor_package` -> `extractor_node` (несколько экземпляров, их имена имеют формат `extractor_node_{joint}`, где `joint` это один из выбранных суставов Unitree H1 по умолчанию:{12, 13, 14, 15, 23, 31} )
+## Лицензии
 
-## 📡 Интерфейс (Топики, Сервисы, Действия, Параметры)
-Спецификация API пакетов.
-### **Пакет 1: converter_angles_ukt_into_rad_node**
-#### **Узел: `converter_angles_ukt_into_rad_node `**
-- **Рабочие топики:**
-
-| Тип услуги | Топик            | Тип сообщения         | Описание                                                                                           |
-| :--------- | :--------------- | :-------------------- | :------------------------------------------------------------------------------------------------- |
-| Публикация | `/UKT_data_rad`  | `std_msgs/msg/String` | Угловые положения суставов УКТ в радианах и степень разжатия пальцев в условных единицах от 0 до 1 |
-| Подписка   | `/UKT_bare_data` | `std_msgs/msg/String` | Исходные угловые положения суставов с УКТ в JSON-формате                                           |
-
-- **Параметры:**
-
-| Параметр        | Тип (знач. по умол.) | Описание                                                                                |
-| :-------------- | :------------------- | :-------------------------------------------------------------------------------------- |
-| `scaling_param` | `float (0.1)`        | Параметр Scale (маштабирование), который задаётся в unity-прогамме от производителя УКТ |
-
-### **Пакет 2: converter_angles_ukt_into_rad_node**
-#### **Узел: `converter_from_ukt_to_h1_node `**
-- **Рабочие топики:**
-
-| Тип услуги | Топик                   | Тип сообщения         | Описание                                                                                |
-| :--------- | :---------------------- | :-------------------- | :-------------------------------------------------------------------------------------- |
-| Публикация | `/positions_to_unitree` | `std_msgs/msg/String` | Целевые угловые положения для суставов Unitree H1 в допустимом диапазоне для Unitree H1 |
-| Подписка   | `/UKT_bare_data`        | `std_msgs/msg/String` | Исходные угловые положения суставов с УКТ в JSON-формате                                |
-
-### **Пакет 3: extractor_package**
-#### **Узел: `extractor_node `**
-- **Рабочие топики:**
-
-| Тип услуги   | Топик                                       | Тип сообщения                | Описание                                                                                                                  |
-| :----------- | :------------------------------------------ | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
-| Публикация   | `/plotjuggler/joint_{H1_joint_num}/H1`      | `std_msgs/msg/Float32`       | Угловое положение выбранного сустава УКТ  в радианах или степень разжатия пальца в условных единицах от 0 до 1            |
-| Публикация   | `/plotjuggler/joint_{H1_joint_num}/UKT`<br> | `std_msgs/msg/Float32`<br>   | Угловое положение выбранного сустава Unitree H1  в радианах или степень разжатия пальца в условных единицах от 0 до 1<br> |
-| Подписка     | `/UKT_data_rad`                             | `std_msgs/msg/String`        | Угловые положения суставов  УКТ в радианах и степень разжатия пальца в условных единицах от 0 до 1                        |
-| Подписка<br> | `/inspire/state`                            | `unitree_go/msg/MotorStates` | Степень разжатия пальцев `Inspire Hands` в условных единицах от 0 до 1                                                    |
-| Подписка<br> | `/lowstate`                                 | `unitree_go/msg/LowState`    | Состояния суставов робота `Unitree H1`                                                                                    |
-
-- **Параметры:**
-
-| Параметр       | Тип (знач. по умол.) | Описание                                                                                     |
-| :------------- | :------------------- | :------------------------------------------------------------------------------------------- |
-| `H1_joint_num` | `int (16)`           | Номер сустава, угловое положение которого отслеживается. Нельзя изменить после запуска ноды. |
-
-### **Пакет 4: repeater_package**
-#### **Узел: `repeater_node `**
-- **Рабочие топики:**
-
-| Тип услуги | Топик            | Тип сообщения         | Описание                                                 |
-| :--------- | :--------------- | :-------------------- | :------------------------------------------------------- |
-| Публикация | `/UKT_bare_data` | `std_msgs/msg/String` | Исходные угловые положения суставов с УКТ в JSON-формате |
-
-
-## 🗺️ Архитектура 
-RQT-графы будут представлены тут.
-
-## Благодарности
-### Livox ROS Driver
-- **Исходный репозиторий**: [Livox-SDK/livox_ros_driver2](https://github.com/Livox-SDK/livox_ros_driver2)
-- **Лицензия**: MIT License
-- **Изменения**: Адаптация launch-файлов для работы с лидаром Livox (подробнее в `livox_ros_driver/MODIFICATIONS.md`)
-
-### Willow Garage / Eurotec
-- **Исходный репозиторий**: [ros-perception/pointcloud_laserscan](https://github.com/ros-perception/pointcloud_to_laserscan)
-- **Лицензия**: BSD 3-Clause License
-- **Изменения (в launch-файле `sample_pointcloude_to_laserscan_launch.py`)**:
-  - Переход на топики Livox (`livox/point_cloud2`, `livox/scan`)
-  - Оптимизация параметров сканирования (360° охват, увеличенный диапазон)
-  - Добавление смещения по высоте (Z=2м)
-
-### Дополнительные компоненты
-- [porizou/livox_to_pointcloud2](https://github.com/porizou/livox_to_pointcloud2) - преобразование данных Livox
-- [RapidJSON](https://rapidjson.org) - обработка JSON (MIT License)
-- [ROS2 rclcpp](https://github.com/ros2/rclcpp) - инфраструктура (Apache 2.0)
-- [DLu/tf_transformations](https://github.com/DLu/tf_transformations/tree/foxy?tab=readme-ov-file) - Повторная реализация библиотеки tf/transformations.py для стандартных пространственных операций Python (BSD 3-Clause License)
-
-
-## Лицензия
-Copyright (c) 2025 Алиса Зенина и Александр Грачев РТУ МИРЭА (Россия)
-
-Данное программное обеспечение распространяется под [лицензией MIT](LICENSE).  
-Разрешается свободное использование, копирование, модификация и распространение при условии сохранения уведомления об авторских правах и текста лицензии.
-
-## Предложения и корректировки
-Если Вы нашли, ошибку, неточность, у Вас есть предложения по улучшению или вопросы, то напишите в телеграмм [сюда](https://t.me/Alex_19846) (Александр) или [сюда](https://t.me/Kika_01) (Алиса).
+Собственные пакеты — MIT. Сторонний код сохраняет свои лицензии: `livox_ros_driver2` (MIT),
+`livox_to_pointcloud2` (Apache-2.0), `pointcloud_to_laserscan` (BSD).

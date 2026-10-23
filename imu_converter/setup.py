@@ -4,7 +4,7 @@ package_name = 'imu_converter'
 
 setup(
     name=package_name,
-    version='1.0.0',
+    version='1.1.0',
     packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='banana-killer',
     maintainer_email='sashagrachev2005@gmail.com',
-    description='The package for convertation IMU data from a custom msg from Unitree to a standard ros2 imu-msgs (sensors_msgs/msg/IMU) ',
+    description='Converts IMU data from Unitree LowState to sensor_msgs/msg/Imu.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

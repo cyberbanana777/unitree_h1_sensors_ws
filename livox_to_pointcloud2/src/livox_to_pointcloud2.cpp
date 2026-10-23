@@ -1,71 +1,91 @@
 #include "livox_to_pointcloud2.hpp"
 
-using namespace std::chrono_literals;
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 
-LivoxToPointCloud2::LivoxToPointCloud2() : Node("livox_to_pointcloud2")
+#include "sensor_msgs/msg/point_field.hpp"
+
+namespace
 {
-    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("livox/point_cloud2", 10);
-    subscription_ = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(
-        "livox/lidar", 10, std::bind(&LivoxToPointCloud2::callback, this, std::placeholders::_1));
+constexpr uint32_t kPointStep = 18;
+
+// Appends one field description to the PointCloud2 message.
+void addField(
+  sensor_msgs::msg::PointCloud2 & cloud, const char * name, uint32_t offset, uint8_t datatype)
+{
+  sensor_msgs::msg::PointField field;
+  field.name = name;
+  field.offset = offset;
+  field.datatype = datatype;
+  field.count = 1;
+  cloud.fields.push_back(field);
 }
 
-void LivoxToPointCloud2::callback(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg)
+// Unaligned-safe store of a trivially copyable value (point_step is 18, so
+// float fields are not 4-byte aligned for every point).
+template<typename T>
+void store(uint8_t * destination, const T & value)
 {
-    sensor_msgs::msg::PointCloud2 output;
-    output.header = msg->header;
-    output.fields.resize(6);
+  std::memcpy(destination, &value, sizeof(T));
+}
+}  // namespace
 
-    output.fields[0].name = "x";
-    output.fields[0].offset = 0;
-    output.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
-    output.fields[0].count = 1;
+LivoxToPointCloud2::LivoxToPointCloud2()
+: Node("livox_to_pointcloud2")
+{
+  publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("livox/point_cloud2", 10);
+  subscription_ = this->create_subscription<livox_ros_driver2::msg::CustomMsg>(
+    "livox/lidar", 10,
+    std::bind(&LivoxToPointCloud2::callback, this, std::placeholders::_1));
 
-    output.fields[1].name = "y";
-    output.fields[1].offset = 4;
-    output.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
-    output.fields[1].count = 1;
+  RCLCPP_INFO(
+    this->get_logger(), "Converting %s -> %s",
+    subscription_->get_topic_name(), publisher_->get_topic_name());
+}
 
-    output.fields[2].name = "z";
-    output.fields[2].offset = 8;
-    output.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
-    output.fields[2].count = 1;
+void LivoxToPointCloud2::callback(const livox_ros_driver2::msg::CustomMsg::ConstSharedPtr msg)
+{
+  // point_num comes from the driver; never trust it more than the real array size,
+  // otherwise a mismatch would write outside the output buffer.
+  const std::size_t count = std::min<std::size_t>(msg->point_num, msg->points.size());
+  if (count != msg->point_num) {
+    RCLCPP_WARN_THROTTLE(
+      this->get_logger(), *this->get_clock(), 5000,
+      "point_num (%u) differs from points.size() (%zu), using %zu",
+      msg->point_num, msg->points.size(), count);
+  }
 
-    output.fields[3].name = "intensity";
-    output.fields[3].offset = 12;
-    output.fields[3].datatype = sensor_msgs::msg::PointField::FLOAT32;
-    output.fields[3].count = 1;
+  sensor_msgs::msg::PointCloud2 output;
+  output.header = msg->header;
 
-    output.fields[4].name = "tag";
-    output.fields[4].offset = 16;
-    output.fields[4].datatype = sensor_msgs::msg::PointField::UINT8;
-    output.fields[4].count = 1;
+  addField(output, "x", 0, sensor_msgs::msg::PointField::FLOAT32);
+  addField(output, "y", 4, sensor_msgs::msg::PointField::FLOAT32);
+  addField(output, "z", 8, sensor_msgs::msg::PointField::FLOAT32);
+  addField(output, "intensity", 12, sensor_msgs::msg::PointField::FLOAT32);
+  addField(output, "tag", 16, sensor_msgs::msg::PointField::UINT8);
+  addField(output, "line", 17, sensor_msgs::msg::PointField::UINT8);
 
-    output.fields[5].name = "line";
-    output.fields[5].offset = 17;
-    output.fields[5].datatype = sensor_msgs::msg::PointField::UINT8;
-    output.fields[5].count = 1;
+  output.height = 1;
+  output.width = static_cast<uint32_t>(count);
+  output.is_bigendian = false;
+  output.is_dense = true;
+  output.point_step = kPointStep;
+  output.row_step = kPointStep * output.width;
+  output.data.resize(static_cast<std::size_t>(output.row_step));
 
-    output.point_step = 18;
-    output.row_step = output.point_step * msg->point_num;
-    output.data.resize(output.row_step);
+  uint8_t * out = output.data.data();
+  for (std::size_t i = 0; i < count; ++i) {
+    const auto & point = msg->points[i];
+    store<float>(out + 0, point.x);
+    store<float>(out + 4, point.y);
+    store<float>(out + 8, point.z);
+    store<float>(out + 12, static_cast<float>(point.reflectivity));
+    store<uint8_t>(out + 16, point.tag);
+    store<uint8_t>(out + 17, point.line);
+    out += kPointStep;
+  }
 
-    uint8_t* raw_data_ptr = output.data.data();
-    for (const auto& point : msg->points)
-    {
-        *(reinterpret_cast<float*>(raw_data_ptr + 0)) = point.x;
-        *(reinterpret_cast<float*>(raw_data_ptr + 4)) = point.y;
-        *(reinterpret_cast<float*>(raw_data_ptr + 8)) = point.z;
-        *(reinterpret_cast<float*>(raw_data_ptr + 12)) = static_cast<float>(point.reflectivity);
-        *(raw_data_ptr + 16) = point.tag;
-        *(raw_data_ptr + 17) = point.line;
-
-        raw_data_ptr += output.point_step;
-    }
-
-    output.width = msg->point_num;
-    output.height = 1;
-    output.is_bigendian = false;
-    output.is_dense = true;
-
-    publisher_->publish(output);
+  publisher_->publish(output);
 }

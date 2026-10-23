@@ -2,7 +2,7 @@
 # Copyright (c) 2022 Livox. All rights reserved.
 #
 # Modified by Alexander Grachev and Alice Zenina RTU MIREA (Russia), 2025.
-# Changes: changed fequerency and type of message, added remappings.
+# Changes: changed fequerency and type of message, added namespace and remappings.
 
 
 import os
@@ -43,9 +43,13 @@ def generate_launch_description():
         executable='livox_ros_driver2_node',
         name='livox_lidar_publisher',
         namespace='sensors',
+        # Имена в драйвере относительные (livox/lidar, livox/imu), поэтому и
+        # ремап должен быть относительным: с namespace 'sensors' топик на самом
+        # деле называется /sensors/livox/lidar, и абсолютное '/livox/lidar'
+        # правило не находило, ремап молча не применялся.
         remappings=[
-            ('/livox/lidar', '/lidar/livox/custom_msg'),
-            ('/livox/imu', '/imu/livox'),
+            ('livox/lidar', 'lidar/livox/custom_msg'),
+            ('livox/imu', 'imu/livox'),
         ],
         output='screen',
         parameters=livox_ros2_params

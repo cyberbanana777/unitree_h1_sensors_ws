@@ -281,6 +281,15 @@ else(ROS_EDITION STREQUAL "ROS2")
 
   target_include_directories(${PROJECT_NAME} PRIVATE ${livox_sdk_INCLUDE_DIRS})
 
+  # Fork change: choose the Humble-style typesupport branch automatically from
+  # ROS_DISTRO when -DHUMBLE_ROS=humble was not passed (a plain `colcon build`
+  # used to fail on Humble with LIVOX_INTERFACES_INCLUDE_DIRECTORIES-NOTFOUND).
+  if(NOT HUMBLE_ROS AND DEFINED ENV{ROS_DISTRO})
+    if(NOT "$ENV{ROS_DISTRO}" STREQUAL "foxy" AND NOT "$ENV{ROS_DISTRO}" STREQUAL "galactic")
+      set(HUMBLE_ROS "humble")
+    endif()
+  endif()
+
   # get include directories of custom msg headers
   if(HUMBLE_ROS STREQUAL "humble")
     rosidl_get_typesupport_target(cpp_typesupport_target

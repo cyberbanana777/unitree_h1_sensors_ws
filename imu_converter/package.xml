@@ -2,15 +2,14 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>imu_converter</name>
-  <version>1.0.0</version>
-  <description>The package for convertation IMU data from a custom msg from Unitree to a standard ros2 imu-msgs (sensors_msgs/msg/IMU) </description>
+  <version>1.1.0</version>
+  <description>Converts IMU data from the Unitree LowState message to sensor_msgs/msg/Imu.</description>
   <maintainer email="sashagrachev2005@gmail.com">banana-killer</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>unitree_go</depend>
-  <depend>geometry_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
