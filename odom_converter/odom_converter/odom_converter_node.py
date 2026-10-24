@@ -10,8 +10,10 @@
 LowState) в стандартный nav_msgs/Odometry. Положение и линейная скорость берутся
 из SportModeState, ориентация и угловая скорость — из IMU в LowState. Кватернион
 Unitree имеет порядок (w, x, y, z), в сообщение ROS он записывается как
-(x, y, z, w). При старте узел включает одометрию робота через OdomClient, при
-остановке — выключает. Опционально публикует TF odom -> pelvis.
+(x, y, z, w). При старте узел включает одометрию робота, при остановке — выключает.
+Включение/выключение (Unitree SDK, OdomClient) выполняет отдельный вспомогательный
+процесс odom_enabler: SDK и rmw_cyclonedds не могут делить DDS-домен 0 в одном
+процессе. Опционально публикует TF odom -> pelvis.
 
 ANNOTATION
 Converts Unitree odometry (SportModeState from the odommodestate topic and
@@ -19,26 +21,20 @@ LowState) into a standard nav_msgs/Odometry message. Position and linear
 velocity come from SportModeState, orientation and angular velocity from the
 IMU inside LowState. The Unitree quaternion uses the (w, x, y, z) order and is
 written to the ROS message as (x, y, z, w). On start the node enables the
-robot odometry through OdomClient and disables it on shutdown. Can optionally
+robot odometry and disables it on shutdown. Enabling/disabling (Unitree SDK,
+OdomClient) is done by a separate helper process, odom_enabler: the SDK and
+rmw_cyclonedds cannot share DDS domain 0 in one process. Can optionally
 broadcast the odom -> pelvis TF.
 '''
 
 import rclpy
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
+from odom_converter.odom_enabler import (DEFAULT_CLIENT_TIMEOUT_SEC,
+                                         OdomEnablerProcess)
 from rclpy.node import Node
 from tf2_ros import TransformBroadcaster
 from unitree_go.msg import LowState, SportModeState
-
-try:
-    from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-    from high_level_control import OdomClient
-except ImportError as import_error:  # pragma: no cover
-    ChannelFactoryInitialize = None
-    OdomClient = None
-    _IMPORT_ERROR = import_error
-else:
-    _IMPORT_ERROR = None
 
 
 # ==============================================================================
@@ -50,7 +46,7 @@ DEFAULT_LOWSTATE_TOPIC = 'lowstate'
 DEFAULT_ODOM_TOPIC = 'odom'
 DEFAULT_ODOM_FRAME = 'odom'
 DEFAULT_CHILD_FRAME = 'pelvis'
-ODOM_CLIENT_TIMEOUT_SEC = 1.0
+ODOM_CLIENT_TIMEOUT_SEC = DEFAULT_CLIENT_TIMEOUT_SEC
 
 
 # ==============================================================================
@@ -110,13 +106,6 @@ class OdometryConverter(Node):
     def __init__(self):
         super().__init__('odometry_converter')
 
-        if OdomClient is None or ChannelFactoryInitialize is None:
-            raise RuntimeError(
-                'Cannot import unitree_sdk2py / high_level_control '
-                f'({_IMPORT_ERROR}). Install unitree_sdk2py and the '
-                'unitree_h1_control_ws workspace (it provides '
-                'high_level_control.OdomClient) and source them.')
-
         # Parameters
         self.declare_parameter('sport_topic', DEFAULT_SPORT_TOPIC)
         self.declare_parameter('lowstate_topic', DEFAULT_LOWSTATE_TOPIC)
@@ -127,7 +116,8 @@ class OdometryConverter(Node):
         self.declare_parameter('pose_variance', 0.0)
         self.declare_parameter('twist_variance', 0.0)
         # Сетевой интерфейс для DDS Unitree SDK, например 'eth0'. Пусто = по умолчанию.
-        self.declare_parameter('network_interface', '')
+        self.declare_parameter('network_interface', 'wlp0s20f3')
+        # enp3s0
 
         sport_topic = self.get_parameter('sport_topic').value
         lowstate_topic = self.get_parameter('lowstate_topic').value
@@ -151,17 +141,13 @@ class OdometryConverter(Node):
         self.sport_subscription = self.create_subscription(
             SportModeState, sport_topic, self.sport_callback, 10)
 
-        # Unitree SDK: channel + OdomClient. Created last so that a failure here
-        # does not leave half-initialised subscriptions behind.
-        self.odom_client = None
-        if network_interface:
-            ChannelFactoryInitialize(0, network_interface)
-        else:
-            ChannelFactoryInitialize(0)
-        self.odom_client = OdomClient()
-        self.odom_client.Init()
-        self.odom_client.SetTimeout(ODOM_CLIENT_TIMEOUT_SEC)
-        self.odom_client.EnableOdom()
+        # Robot odometry on/off lives in a separate process (own DDS domain
+        # owner, no rclpy). Started last so that a failure here does not leave
+        # half-initialised subscriptions behind.
+        self.odom_enabler = OdomEnablerProcess(
+            network_interface=network_interface,
+            client_timeout=ODOM_CLIENT_TIMEOUT_SEC)
+        self.odom_enabler.start()
 
         self.get_logger().info(
             f'Odometry converter started: {sport_topic} + {lowstate_topic} '
@@ -210,14 +196,13 @@ class OdometryConverter(Node):
 
     def disable_odometry(self):
         """Switch the robot odometry off (safe to call more than once)."""
-        if self.odom_client is None:
+        enabler = getattr(self, 'odom_enabler', None)
+        if enabler is None:
             return
-        try:
-            self.odom_client.DisableOdom()
-        except Exception as error:  # noqa: BLE001 - SDK raises various types
-            self.get_logger().error(f'Failed to disable odometry: {error}')
-        finally:
-            self.odom_client = None
+        self.odom_enabler = None
+        if not enabler.stop():
+            self.get_logger().error(
+                'Failed to disable odometry (helper did not exit cleanly)')
 
 
 # ==============================================================================
